@@ -1,0 +1,1 @@
+# Cerebro Operativo — App Package

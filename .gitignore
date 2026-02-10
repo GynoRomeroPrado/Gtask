@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+venv/
+.venv/
+env/
+
+# Environment
+.env
+*.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+Thumbs.db
+.DS_Store
+
+# PostgreSQL
+*.sql.bak
+
+# SQLite (dev)
+*.db
+*.sqlite3
+
+# Node (Frontend)
+node_modules/
+.next/
+out/
+
+# Logs
+*.log
+logs/
+
+# Alembic
+alembic/versions/__pycache__/
+
+# Gemini Agent
+.gemini/

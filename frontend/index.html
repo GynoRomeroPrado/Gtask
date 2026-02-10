@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Cerebro Operativo — Sistema integral de gestión de tareas con IA">
+    <title>🧠 Cerebro Operativo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+
+<body>
+    <div class="app-layout">
+        <!-- === SIDEBAR === -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-brand">
+                    <span>🧠</span>
+                    <div>Cerebro Operativo</div>
+                </div>
+            </div>
+
+            <!-- Vistas principales -->
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">Vistas</div>
+                <ul class="sidebar-nav" id="nav-views">
+                    <li>
+                        <button class="sidebar-item active" data-view="all">
+                            <span class="icon">📋</span>
+                            Todas las tareas
+                            <span class="badge" id="badge-all">0</span>
+                        </button>
+                    </li>
+                    <li>
+                        <button class="sidebar-item" data-view="today">
+                            <span class="icon">📅</span>
+                            Hoy
+                            <span class="badge" id="badge-today">0</span>
+                        </button>
+                    </li>
+                    <li>
+                        <button class="sidebar-item" data-view="upcoming">
+                            <span class="icon">🗓️</span>
+                            Próximos 7 días
+                        </button>
+                    </li>
+                    <li>
+                        <button class="sidebar-item" data-view="completed">
+                            <span class="icon">✅</span>
+                            Completadas
+                        </button>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Calendario y Finanzas -->
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">Calendario</div>
+                <ul class="sidebar-nav">
+                    <li>
+                        <button class="sidebar-item" data-view="calendar"
+                            onclick="switchView('calendar', '📅 Calendario')">
+                            <span class="icon">📅</span>
+                            Calendario
+                        </button>
+                    </li>
+                    <li>
+                        <button class="sidebar-item" data-view="financial"
+                            onclick="switchView('financial', '💰 Alertas Financieras')">
+                            <span class="icon">💰</span>
+                            Alertas Financieras
+                            <span class="badge" id="badge-financial">0</span>
+                        </button>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Listas del usuario -->
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">Mis Listas</div>
+                <ul class="sidebar-nav" id="nav-lists">
+                    <!-- Se llenan dinámicamente -->
+                </ul>
+            </div>
+
+            <div class="sidebar-footer">
+                <button class="btn-new-list" onclick="openNewListModal()">
+                    <span>+</span>
+                    Nueva lista
+                </button>
+            </div>
+        </aside>
+
+        <!-- === MAIN CONTENT === -->
+        <main class="main-content">
+            <header class="main-header">
+                <div class="main-title">
+                    <button class="btn btn-icon btn-ghost mobile-menu" onclick="toggleSidebar()"
+                        style="display:none;">☰</button>
+                    <h1 id="view-title">📋 Todas las tareas</h1>
+                    <span class="task-count-header" id="task-count">0 tareas</span>
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn-ghost" id="btn-new-event" onclick="openNewEventModal()"
+                        style="display:none;">
+                        <span>📅</span> Nuevo evento
+                    </button>
+                    <button class="btn btn-ghost" id="btn-new-alert" onclick="openNewFinancialAlertModal()"
+                        style="display:none;">
+                        <span>💳</span> Nueva alerta
+                    </button>
+                    <button class="btn btn-primary" id="btn-new-task" onclick="openNewTaskModal()">
+                        <span>+</span> Nueva tarea
+                    </button>
+                </div>
+            </header>
+
+            <!-- Filter Bar (Tasks) -->
+            <div class="filter-bar" id="filter-bar-tasks">
+                <div class="search-box">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8" />
+                        <path d="m21 21-4.35-4.35" />
+                    </svg>
+                    <input type="text" placeholder="Buscar tareas..." id="search-input" oninput="handleSearch()">
+                </div>
+                <button class="filter-chip" data-priority="1" onclick="togglePriorityFilter(1)">🔴 Urgente</button>
+                <button class="filter-chip" data-priority="2" onclick="togglePriorityFilter(2)">🟡 Alta</button>
+                <button class="filter-chip" data-priority="3" onclick="togglePriorityFilter(3)">🔵 Media</button>
+                <button class="filter-chip" data-priority="4" onclick="togglePriorityFilter(4)">⚪ Baja</button>
+            </div>
+
+            <!-- Task List Container -->
+            <div class="task-container" id="task-container">
+                <!-- Se llena dinámicamente -->
+            </div>
+
+            <!-- Calendar Container (hidden by default) -->
+            <div class="task-container" id="calendar-container" style="display:none;">
+                <!-- Se llena dinámicamente -->
+            </div>
+
+            <!-- Financial Alerts Container (hidden by default) -->
+            <div class="task-container" id="financial-container" style="display:none;">
+                <!-- Se llena dinámicamente -->
+            </div>
+        </main>
+    </div>
+
+    <!-- === MODAL: Nueva/Editar Tarea === -->
+    <div class="modal-overlay" id="task-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="modal-title">Nueva Tarea</h2>
+                <button class="modal-close" onclick="closeTaskModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="task-edit-id">
+
+                <div class="form-group">
+                    <label class="form-label">Título</label>
+                    <input type="text" class="form-input" id="task-title" placeholder="¿Qué necesitas hacer?">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Descripción</label>
+                    <textarea class="form-textarea" id="task-description"
+                        placeholder="Detalles adicionales..."></textarea>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Prioridad</label>
+                        <select class="form-select" id="task-priority">
+                            <option value="1">🔴 Urgente</option>
+                            <option value="2">🟡 Alta</option>
+                            <option value="3" selected>🔵 Media</option>
+                            <option value="4">⚪ Baja</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Fecha límite</label>
+                        <input type="date" class="form-input" id="task-due-date">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Lista</label>
+                    <select class="form-select" id="task-list">
+                        <option value="">Sin lista</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Tags</label>
+                    <div class="form-tags" id="task-tags-container"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" onclick="closeTaskModal()">Cancelar</button>
+                <button class="btn btn-primary" onclick="saveTask()">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- === MODAL: Nueva Lista === -->
+    <div class="modal-overlay" id="list-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Nueva Lista</h2>
+                <button class="modal-close" onclick="closeListModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Nombre</label>
+                    <input type="text" class="form-input" id="list-name" placeholder="Nombre de la lista">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Color</label>
+                        <input type="color" class="form-input" id="list-color" value="#6366F1"
+                            style="height:42px;padding:4px;">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Icono</label>
+                        <select class="form-select" id="list-icon">
+                            <option value="💼">💼 Trabajo</option>
+                            <option value="🚀">🚀 Proyecto</option>
+                            <option value="🏋️">🏋️ Salud</option>
+                            <option value="🏠">🏠 Personal</option>
+                            <option value="💰">💰 Finanzas</option>
+                            <option value="📚">📚 Estudio</option>
+                            <option value="🎯">🎯 Metas</option>
+                            <option value="📋">📋 General</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" onclick="closeListModal()">Cancelar</button>
+                <button class="btn btn-primary" onclick="saveList()">Crear Lista</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- === MODAL: Nuevo Evento === -->
+    <div class="modal-overlay" id="event-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="event-modal-title">Nuevo Evento</h2>
+                <button class="modal-close" onclick="closeEventModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="event-edit-id">
+                <div class="form-group">
+                    <label class="form-label">Título</label>
+                    <input type="text" class="form-input" id="event-title" placeholder="Nombre del evento">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Descripción</label>
+                    <textarea class="form-textarea" id="event-description" placeholder="Detalles..."></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Tipo</label>
+                        <select class="form-select" id="event-type">
+                            <option value="custom">📌 Personalizado</option>
+                            <option value="meeting">👥 Reunión</option>
+                            <option value="reminder">🔔 Recordatorio</option>
+                            <option value="gym">🏋️ Gym</option>
+                            <option value="health">🩺 Salud</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Fecha</label>
+                        <input type="date" class="form-input" id="event-date">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Hora inicio</label>
+                        <input type="time" class="form-input" id="event-start-time">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Hora fin</label>
+                        <input type="time" class="form-input" id="event-end-time">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Color</label>
+                        <input type="color" class="form-input" id="event-color" value="#8B5CF6"
+                            style="height:42px;padding:4px;">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Alerta (min antes)</label>
+                        <select class="form-select" id="event-alert">
+                            <option value="">Sin alerta</option>
+                            <option value="15">15 minutos</option>
+                            <option value="30" selected>30 minutos</option>
+                            <option value="60">1 hora</option>
+                            <option value="1440">1 día</option>
+                            <option value="4320">3 días</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" onclick="closeEventModal()">Cancelar</button>
+                <button class="btn btn-primary" onclick="saveEvent()">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- === MODAL: Nueva Alerta Financiera === -->
+    <div class="modal-overlay" id="financial-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Nueva Alerta Financiera</h2>
+                <button class="modal-close" onclick="closeFinancialModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Nombre del pago</label>
+                    <input type="text" class="form-input" id="fin-name" placeholder="Ej: Tarjeta BBVA">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Descripción</label>
+                    <textarea class="form-textarea" id="fin-description" placeholder="Detalles del pago..."></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Día de vencimiento</label>
+                        <input type="number" class="form-input" id="fin-due-day" min="1" max="31" placeholder="Ej: 2">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Alertar con anticipación</label>
+                        <select class="form-select" id="fin-alert-days">
+                            <option value="1">1 día antes</option>
+                            <option value="2">2 días antes</option>
+                            <option value="3" selected>3 días antes</option>
+                            <option value="5">5 días antes</option>
+                            <option value="7">1 semana antes</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Monto aprox.</label>
+                        <input type="text" class="form-input" id="fin-amount" placeholder="Ej: 1500.00">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Categoría</label>
+                        <select class="form-select" id="fin-category">
+                            <option value="tarjeta_credito">💳 Tarjeta de Crédito</option>
+                            <option value="servicio">🔌 Servicio</option>
+                            <option value="prestamo">🏦 Préstamo</option>
+                            <option value="suscripcion">📱 Suscripción</option>
+                            <option value="otro">📄 Otro</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Moneda</label>
+                        <select class="form-select" id="fin-currency">
+                            <option value="PEN">🇵🇪 PEN (Soles)</option>
+                            <option value="USD">🇺🇸 USD (Dólares)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Color</label>
+                        <input type="color" class="form-input" id="fin-color" value="#F59E0B"
+                            style="height:42px;padding:4px;">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" onclick="closeFinancialModal()">Cancelar</button>
+                <button class="btn btn-primary" onclick="saveFinancialAlert()">Crear Alerta</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- === AI Chat Panel === -->
+    <div class="ai-chat-fab" id="ai-chat-fab" onclick="toggleChatPanel()" title="Asistente IA (Ctrl+I)">
+        🧠
+    </div>
+    <div class="ai-chat-panel" id="ai-chat-panel">
+        <div class="ai-chat-header">
+            <div class="ai-chat-header-info">
+                <span>🧠</span>
+                <div>
+                    <div class="ai-chat-title">Cerebro Operativo</div>
+                    <div class="ai-chat-subtitle">Asistente IA</div>
+                </div>
+            </div>
+            <button class="ai-chat-close" onclick="toggleChatPanel()">×</button>
+        </div>
+        <div class="ai-chat-messages" id="ai-chat-messages">
+            <div class="ai-message assistant">
+                <div class="ai-message-content">
+                    👋 ¡Hola! Soy tu asistente de <strong>Cerebro Operativo</strong>.<br><br>
+                    Puedo ayudarte con:
+                    <ul>
+                        <li>📊 <strong>"resumen"</strong> — Estado de tus tareas</li>
+                        <li>💡 <strong>"sugerencias"</strong> — Recomendaciones</li>
+                        <li>✅ <strong>"crear tarea: ..."</strong> — Crear tareas rápido</li>
+                        <li>🤖 Preguntas libres (con API key)</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="ai-chat-input-area">
+            <input type="text" class="ai-chat-input" id="ai-chat-input" placeholder="Escribe un mensaje..."
+                onkeypress="if(event.key==='Enter') sendAIMessage()">
+            <button class="ai-chat-send" onclick="sendAIMessage()">
+                ➤
+            </button>
+        </div>
+    </div>
+
+    <!-- === Toast Container === -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- === WebSocket Notification Bell === -->
+    <div class="notification-indicator" id="notif-indicator" style="display:none;"
+        title="Notificaciones en tiempo real activas">
+        🔔
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+
+</html>
