@@ -16,7 +16,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from app.config import get_settings
 from app.database import engine, Base
-from app.routers import health, tasks, task_lists, tags, events, financial_alerts, notifications, ai_chat, integrations, dashboard
+from app.routers import health, tasks, task_lists, tags, events, financial_alerts, notifications, ai_chat, integrations, dashboard, analytics, bio
 
 
 settings = get_settings()
@@ -84,6 +84,8 @@ app.include_router(notifications.router)
 app.include_router(ai_chat.router, prefix="/api")
 app.include_router(integrations.router, prefix="/api")
 app.include_router(dashboard.router, prefix="/api")
+app.include_router(analytics.router, prefix="/api")
+app.include_router(bio.router, prefix="/api")
 
 
 # === Frontend estático ===

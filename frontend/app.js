@@ -1010,7 +1010,7 @@ function switchView(view, title) {
     document.getElementById('view-title').textContent = title;
 
     // Ocultar todos los containers
-    const containers = ['task-container', 'calendar-container', 'financial-container', 'dashboard-container', 'git-container'];
+    const containers = ['task-container', 'calendar-container', 'financial-container', 'dashboard-container', 'git-container', 'bio-container', 'report-container'];
     containers.forEach(id => {
         const el = document.getElementById(id);
         if (el) el.style.display = 'none';
@@ -1061,15 +1061,25 @@ function switchView(view, title) {
             document.getElementById('git-container').style.display = '';
             loadGitStatus();
             break;
+        case 'bio':
+            document.getElementById('bio-container').style.display = '';
+            loadBioPanel();
+            break;
+        case 'report':
+            document.getElementById('report-container').style.display = '';
+            loadWeeklyReport();
+            break;
     }
 
     // Actualizar conteo del header
     document.getElementById('task-count').textContent =
         view === 'dashboard' ? 'Métricas de productividad' :
             view === 'git' ? 'Estado de repositorios' :
-                view === 'calendar' ? 'Vista mensual' :
-                    view === 'financial' ? `${state.financialAlerts.length} alertas` :
-                        `${state.tasks.length} tareas`;
+                view === 'bio' ? 'Metas de bienestar' :
+                    view === 'report' ? 'Resumen semanal' :
+                        view === 'calendar' ? 'Vista mensual' :
+                            view === 'financial' ? `${state.financialAlerts.length} alertas` :
+                                `${state.tasks.length} tareas`;
 }
 
 // =============================================================================
@@ -1257,6 +1267,216 @@ function renderGitStatus(repo) {
                 <span>🌳 ${repo.branches.length} rama(s)</span>
                 ${repo.remotes.map(r => `<span>🔗 ${r.name}: ${r.url}</span>`).join('')}
             </div>
+        </div>
+    `;
+}
+
+// =============================================================================
+// BIO-OPTIMIZACIÓN — Metas de bienestar
+// =============================================================================
+
+async function loadBioPanel() {
+    const container = document.getElementById('bio-container');
+    container.innerHTML = '<div class="loading-state"><div class="typing-dots"><span></span><span></span><span></span></div><p>Cargando bienestar…</p></div>';
+
+    try {
+        const data = await apiFetch('/bio/today');
+        renderBioPanel(data);
+    } catch (err) {
+        container.innerHTML = `<div class="empty-state"><p>⚠️ Error: ${err.message}</p></div>`;
+    }
+}
+
+function renderBioPanel(data) {
+    const container = document.getElementById('bio-container');
+
+    const goalsHtml = data.goals.length > 0 ? data.goals.map(g => `
+        <div class="bio-goal-card" style="border-left: 3px solid ${g.color}">
+            <div class="bio-goal-header">
+                <span class="bio-goal-icon">${g.icon}</span>
+                <div class="bio-goal-info">
+                    <strong>${g.name}</strong>
+                    <span class="bio-goal-cat">${g.category}</span>
+                </div>
+                <span class="bio-goal-streak">${g.streak > 0 ? `🔥 ${g.streak}d` : ''}</span>
+            </div>
+            <div class="bio-progress-bar">
+                <div class="bio-progress-fill ${g.completed ? 'completed' : ''}" style="width: ${g.percent}%; background: ${g.color}"></div>
+            </div>
+            <div class="bio-goal-footer">
+                <span>${g.current}/${g.target} ${g.unit}</span>
+                <span>${g.percent}%</span>
+                ${!g.completed ? `<button class="bio-log-btn" onclick="logBioProgress('${g.id}')" title="Registrar progreso">+1</button>` : '<span class="bio-done">✅</span>'}
+            </div>
+        </div>
+    `).join('') : '<p class="bio-empty">No hay metas configuradas. ¡Crea tu primera meta!</p>';
+
+    container.innerHTML = `
+        <div class="bio-header">
+            <div class="bio-score">
+                <div class="bio-score-circle" style="--pct: ${data.wellness_score}">
+                    <span>${data.wellness_score}%</span>
+                </div>
+                <div>
+                    <h3>Wellness Score</h3>
+                    <p>${data.completed_goals}/${data.total_goals} metas completadas hoy</p>
+                </div>
+            </div>
+            <button class="btn-accent" onclick="openNewBioGoalPrompt()">+ Nueva Meta</button>
+        </div>
+        <div class="bio-goals-grid">
+            ${goalsHtml}
+        </div>
+    `;
+}
+
+async function logBioProgress(goalId) {
+    try {
+        const res = await apiFetch(`/bio/goals/${goalId}/log`, {
+            method: 'POST',
+            body: JSON.stringify({ value: 1 }),
+        });
+        showToast(res.message, res.completed ? 'success' : 'info');
+        loadBioPanel();
+    } catch (err) {
+        showToast('Error registrando progreso', 'error');
+    }
+}
+
+async function openNewBioGoalPrompt() {
+    const categories = [
+        { value: 'gym', label: '🏋️ Gym', target: 3, unit: 'sesiones', freq: 'weekly' },
+        { value: 'water', label: '💧 Agua', target: 8, unit: 'vasos', freq: 'daily' },
+        { value: 'sleep', label: '😴 Sueño', target: 7, unit: 'horas', freq: 'daily' },
+        { value: 'meditation', label: '🧘 Meditación', target: 10, unit: 'minutos', freq: 'daily' },
+        { value: 'nutrition', label: '🥗 Nutrición', target: 3, unit: 'comidas', freq: 'daily' },
+        { value: 'breaks', label: '☕ Pausas', target: 4, unit: 'pausas', freq: 'daily' },
+    ];
+
+    const choice = prompt(
+        'Selecciona tipo:\n' +
+        categories.map((c, i) => `${i + 1}. ${c.label}`).join('\n') +
+        '\n\nEscribe el número:'
+    );
+
+    const idx = parseInt(choice) - 1;
+    if (isNaN(idx) || idx < 0 || idx >= categories.length) return;
+
+    const cat = categories[idx];
+    const name = prompt(`Nombre para la meta de ${cat.label}:`, cat.label.split(' ')[1]);
+    if (!name) return;
+
+    try {
+        await apiFetch('/bio/goals', {
+            method: 'POST',
+            body: JSON.stringify({
+                name: name,
+                category: cat.value,
+                target_value: cat.target,
+                target_unit: cat.unit,
+                frequency: cat.freq,
+            }),
+        });
+        showToast(`Meta "${name}" creada`, 'success');
+        loadBioPanel();
+    } catch (err) {
+        showToast('Error creando meta', 'error');
+    }
+}
+
+// =============================================================================
+// REPORTE SEMANAL — Resumen automatizado
+// =============================================================================
+
+async function loadWeeklyReport() {
+    const container = document.getElementById('report-container');
+    container.innerHTML = '<div class="loading-state"><div class="typing-dots"><span></span><span></span><span></span></div><p>Generando reporte…</p></div>';
+
+    try {
+        const [report, patterns] = await Promise.all([
+            apiFetch('/analytics/weekly-report'),
+            apiFetch('/analytics/productivity-patterns?days=30'),
+        ]);
+        renderWeeklyReport(report, patterns);
+    } catch (err) {
+        container.innerHTML = `<div class="empty-state"><p>⚠️ Error: ${err.message}</p></div>`;
+    }
+}
+
+function renderWeeklyReport(report, patterns) {
+    const container = document.getElementById('report-container');
+
+    container.innerHTML = `
+        <div class="report-header">
+            <div>
+                <h2>${report.score_emoji} Semana ${report.week}</h2>
+                <p>Score de productividad</p>
+            </div>
+            <div class="report-score">
+                <span class="report-score-number">${report.score}</span>
+                <span class="report-score-label">/100</span>
+            </div>
+        </div>
+
+        <div class="dashboard-grid dashboard-grid-3">
+            <div class="dash-panel">
+                <h3>✅ Completadas</h3>
+                <div class="dash-card-value" style="color: #10B981">${report.completed.count}</div>
+                ${report.completed.tasks.length > 0 ? `
+                    <ul class="report-task-list">
+                        ${report.completed.tasks.map(t => `<li>• ${t.title}</li>`).join('')}
+                    </ul>
+                ` : '<p style="color:var(--text-muted)">Ninguna esta semana</p>'}
+            </div>
+            <div class="dash-panel">
+                <h3>📋 Pendientes</h3>
+                <div class="dash-card-value" style="color: var(--accent-primary)">${report.pending.total}</div>
+                ${report.pending.overdue > 0 ? `<p style="color: #EF4444">⚠️ ${report.pending.overdue} vencida(s)</p>` : '<p style="color: #10B981">✅ Sin vencimientos</p>'}
+            </div>
+            <div class="dash-panel">
+                <h3>📅 Próximas</h3>
+                ${report.upcoming.length > 0 ? `
+                    <ul class="report-task-list">
+                        ${report.upcoming.map(t => `<li>• ${t.title} <small>(${t.due_date})</small></li>`).join('')}
+                    </ul>
+                ` : '<p style="color:var(--text-muted)">Sin tareas próximas</p>'}
+            </div>
+        </div>
+
+        <div class="dash-panel dash-panel-full">
+            <h3>⏰ Horas más productivas</h3>
+            <div class="report-patterns">
+                ${patterns.peak_hour !== null ? `
+                    <div class="report-pattern-item">
+                        <span class="report-pattern-icon">🕐</span>
+                        <div>
+                            <strong>Hora pico: ${patterns.peak_hour_label}</strong>
+                            <p>Tu hora más productiva</p>
+                        </div>
+                    </div>
+                ` : ''}
+                ${patterns.peak_day ? `
+                    <div class="report-pattern-item">
+                        <span class="report-pattern-icon">📅</span>
+                        <div>
+                            <strong>Día pico: ${patterns.peak_day}</strong>
+                            <p>Tu día más productivo</p>
+                        </div>
+                    </div>
+                ` : ''}
+                <div class="report-pattern-item">
+                    <span class="report-pattern-icon">📊</span>
+                    <div>
+                        <strong>${patterns.total_completed} tareas</strong>
+                        <p>completadas en ${patterns.period_days} días</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="dash-panel dash-panel-full">
+            <h3>📊 Resumen</h3>
+            <div class="report-summary">${report.summary.replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')}</div>
         </div>
     `;
 }

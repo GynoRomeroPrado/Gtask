@@ -95,6 +95,19 @@
                             Repositorios Git
                         </button>
                     </li>
+                    <li>
+                        <button class="sidebar-item" data-view="bio" onclick="switchView('bio', '🎯 Bio-Optimización')">
+                            <span class="icon">🎯</span>
+                            Bio-Optimización
+                        </button>
+                    </li>
+                    <li>
+                        <button class="sidebar-item" data-view="report"
+                            onclick="switchView('report', '📋 Reporte Semanal')">
+                            <span class="icon">📋</span>
+                            Reporte Semanal
+                        </button>
+                    </li>
                 </ul>
             </div>
 
@@ -175,6 +188,16 @@
 
             <!-- Git Container (hidden by default) -->
             <div class="task-container" id="git-container" style="display:none;">
+                <!-- Se llena dinámicamente -->
+            </div>
+
+            <!-- Bio Container (hidden by default) -->
+            <div class="task-container" id="bio-container" style="display:none;">
+                <!-- Se llena dinámicamente -->
+            </div>
+
+            <!-- Report Container (hidden by default) -->
+            <div class="task-container" id="report-container" style="display:none;">
                 <!-- Se llena dinámicamente -->
             </div>
         </main>
