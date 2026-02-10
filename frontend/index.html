@@ -478,8 +478,11 @@
             </div>
         </div>
         <div class="ai-chat-input-area">
-            <input type="text" class="ai-chat-input" id="ai-chat-input" placeholder="Escribe un mensaje..."
+            <input type="text" class="ai-chat-input" id="ai-chat-input" placeholder="Escribe o habla..."
                 onkeypress="if(event.key==='Enter') sendAIMessage()">
+            <button class="ai-chat-voice" id="ai-voice-btn" onclick="toggleVoiceInput()" title="Hablar (mic)">
+                🎙️
+            </button>
             <button class="ai-chat-send" onclick="sendAIMessage()">
                 ➤
             </button>

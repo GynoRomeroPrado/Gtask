@@ -546,31 +546,7 @@ function togglePriorityFilter(priority) {
 // NAVEGACIÓN
 // =============================================================================
 
-function switchView(view, title) {
-    state.currentView = view;
-    state.currentListId = null;
-    document.getElementById('view-title').textContent = title;
-
-    document.querySelectorAll('.sidebar-item').forEach(item => {
-        item.classList.toggle('active', item.dataset.view === view);
-    });
-
-    // Toggle containers
-    const isTaskView = !['calendar', 'financial'].includes(view);
-    document.getElementById('task-container').style.display = isTaskView ? 'block' : 'none';
-    document.getElementById('calendar-container').style.display = view === 'calendar' ? 'block' : 'none';
-    document.getElementById('financial-container').style.display = view === 'financial' ? 'block' : 'none';
-    document.getElementById('filter-bar-tasks').style.display = isTaskView ? 'flex' : 'none';
-
-    // Toggle header buttons
-    document.getElementById('btn-new-task').style.display = isTaskView ? 'inline-flex' : 'none';
-    document.getElementById('btn-new-event').style.display = view === 'calendar' ? 'inline-flex' : 'none';
-    document.getElementById('btn-new-alert').style.display = view === 'financial' ? 'inline-flex' : 'none';
-
-    if (view === 'calendar') renderCalendar();
-    else if (view === 'financial') renderFinancialAlerts();
-    else renderTasks();
-}
+// switchView está definido más abajo en la sección VISTA SWITCHING (línea ~1006)
 
 function switchToList(listId, title) {
     state.currentView = 'list-' + listId;
@@ -1624,3 +1600,86 @@ function removeTypingIndicator(el) {
     if (el && el.parentNode) el.remove();
 }
 
+// =============================================================================
+// VOZ — Reconocimiento de voz (Web Speech API)
+// =============================================================================
+
+let voiceRecognition = null;
+let isRecording = false;
+
+function toggleVoiceInput() {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+        showToast('Tu navegador no soporta reconocimiento de voz. Usa Chrome.', 'error');
+        return;
+    }
+
+    if (isRecording) {
+        stopVoiceInput();
+        return;
+    }
+
+    startVoiceInput();
+}
+
+function startVoiceInput() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    voiceRecognition = new SpeechRecognition();
+    voiceRecognition.lang = 'es-MX';
+    voiceRecognition.continuous = false;
+    voiceRecognition.interimResults = true;
+    voiceRecognition.maxAlternatives = 1;
+
+    const btn = document.getElementById('ai-voice-btn');
+    const input = document.getElementById('ai-chat-input');
+
+    voiceRecognition.onstart = () => {
+        isRecording = true;
+        btn.classList.add('recording');
+        btn.innerHTML = '🔴';
+        input.placeholder = '🎙️ Escuchando...';
+        input.value = '';
+    };
+
+    voiceRecognition.onresult = (event) => {
+        let transcript = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+            transcript += event.results[i][0].transcript;
+        }
+        input.value = transcript;
+    };
+
+    voiceRecognition.onend = () => {
+        isRecording = false;
+        btn.classList.remove('recording');
+        btn.innerHTML = '🎙️';
+        input.placeholder = 'Escribe o habla...';
+
+        // Auto-enviar si hay texto
+        if (input.value.trim()) {
+            sendAIMessage();
+        }
+    };
+
+    voiceRecognition.onerror = (event) => {
+        isRecording = false;
+        btn.classList.remove('recording');
+        btn.innerHTML = '🎙️';
+        input.placeholder = 'Escribe o habla...';
+
+        if (event.error === 'no-speech') {
+            showToast('No se detectó voz. Intenta de nuevo.', 'info');
+        } else if (event.error === 'not-allowed') {
+            showToast('Permiso de micrófono denegado. Habilítalo en configuración.', 'error');
+        } else {
+            showToast(`Error de voz: ${event.error}`, 'error');
+        }
+    };
+
+    voiceRecognition.start();
+}
+
+function stopVoiceInput() {
+    if (voiceRecognition) {
+        voiceRecognition.stop();
+    }
+}
