@@ -999,6 +999,268 @@ function showToast(message, type = 'info') {
     }, 3000);
 }
 
+// =============================================================================
+// VISTA SWITCHING — Cambio entre vistas
+// =============================================================================
+
+function switchView(view, title) {
+    state.currentView = view;
+
+    // Actualizar título
+    document.getElementById('view-title').textContent = title;
+
+    // Ocultar todos los containers
+    const containers = ['task-container', 'calendar-container', 'financial-container', 'dashboard-container', 'git-container'];
+    containers.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+    });
+
+    // Ocultar/mostrar botones de header según vista
+    const btnNewTask = document.getElementById('btn-new-task');
+    const btnNewEvent = document.getElementById('btn-new-event');
+    const btnNewAlert = document.getElementById('btn-new-alert');
+    const filterBar = document.getElementById('filter-bar-tasks');
+
+    if (btnNewTask) btnNewTask.style.display = 'none';
+    if (btnNewEvent) btnNewEvent.style.display = 'none';
+    if (btnNewAlert) btnNewAlert.style.display = 'none';
+    if (filterBar) filterBar.style.display = 'none';
+
+    // Actualizar sidebar active
+    document.querySelectorAll('.sidebar-item').forEach(btn => btn.classList.remove('active'));
+    const activeBtn = document.querySelector(`.sidebar-item[data-view="${view}"]`);
+    if (activeBtn) activeBtn.classList.add('active');
+
+    // Mostrar container y botones según vista
+    switch (view) {
+        case 'all':
+        case 'today':
+        case 'upcoming':
+        case 'completed':
+            document.getElementById('task-container').style.display = '';
+            if (btnNewTask) btnNewTask.style.display = '';
+            if (filterBar) filterBar.style.display = '';
+            renderTasks();
+            break;
+        case 'calendar':
+            document.getElementById('calendar-container').style.display = '';
+            if (btnNewEvent) btnNewEvent.style.display = '';
+            renderCalendarView();
+            break;
+        case 'financial':
+            document.getElementById('financial-container').style.display = '';
+            if (btnNewAlert) btnNewAlert.style.display = '';
+            renderFinancialAlerts();
+            break;
+        case 'dashboard':
+            document.getElementById('dashboard-container').style.display = '';
+            loadDashboard();
+            break;
+        case 'git':
+            document.getElementById('git-container').style.display = '';
+            loadGitStatus();
+            break;
+    }
+
+    // Actualizar conteo del header
+    document.getElementById('task-count').textContent =
+        view === 'dashboard' ? 'Métricas de productividad' :
+            view === 'git' ? 'Estado de repositorios' :
+                view === 'calendar' ? 'Vista mensual' :
+                    view === 'financial' ? `${state.financialAlerts.length} alertas` :
+                        `${state.tasks.length} tareas`;
+}
+
+// =============================================================================
+// DASHBOARD — Métricas de productividad
+// =============================================================================
+
+async function loadDashboard() {
+    const container = document.getElementById('dashboard-container');
+    container.innerHTML = '<div class="loading-state"><div class="typing-dots"><span></span><span></span><span></span></div><p>Cargando métricas…</p></div>';
+
+    try {
+        const [overview, stats, streaks] = await Promise.all([
+            apiFetch('/dashboard/overview'),
+            apiFetch('/dashboard/task-stats?days=30'),
+            apiFetch('/dashboard/streaks'),
+        ]);
+        renderDashboard(overview, stats, streaks);
+    } catch (err) {
+        container.innerHTML = `<div class="empty-state"><p>⚠️ Error: ${err.message}</p></div>`;
+    }
+}
+
+function renderDashboard(overview, stats, streaks) {
+    const container = document.getElementById('dashboard-container');
+    const t = overview.tasks;
+
+    container.innerHTML = `
+        <div class="dashboard-grid">
+            <!-- Fila 1: Métricas principales -->
+            <div class="dash-card dash-card-accent">
+                <div class="dash-card-icon">📋</div>
+                <div class="dash-card-value">${t.pending}</div>
+                <div class="dash-card-label">Pendientes</div>
+            </div>
+            <div class="dash-card dash-card-success">
+                <div class="dash-card-icon">✅</div>
+                <div class="dash-card-value">${t.completed}</div>
+                <div class="dash-card-label">Completadas</div>
+            </div>
+            <div class="dash-card ${t.overdue > 0 ? 'dash-card-danger' : 'dash-card-muted'}">
+                <div class="dash-card-icon">⏰</div>
+                <div class="dash-card-value">${t.overdue}</div>
+                <div class="dash-card-label">Vencidas</div>
+            </div>
+            <div class="dash-card dash-card-info">
+                <div class="dash-card-icon">📊</div>
+                <div class="dash-card-value">${t.completion_rate}%</div>
+                <div class="dash-card-label">Tasa completado</div>
+            </div>
+        </div>
+
+        <!-- Fila 2: Rachas y velocidad -->
+        <div class="dashboard-grid dashboard-grid-3">
+            <div class="dash-panel">
+                <h3>🔥 Rachas</h3>
+                <div class="dash-streak-row">
+                    <div>
+                        <span class="dash-streak-number">${streaks.current_streak}</span>
+                        <span class="dash-streak-label">días seguidos</span>
+                    </div>
+                    <div>
+                        <span class="dash-streak-number">${streaks.best_streak}</span>
+                        <span class="dash-streak-label">mejor racha</span>
+                    </div>
+                    <div>
+                        <span class="dash-streak-number">${streaks.completed_this_week}</span>
+                        <span class="dash-streak-label">esta semana</span>
+                    </div>
+                </div>
+            </div>
+            <div class="dash-panel">
+                <h3>⚡ Velocidad</h3>
+                <div class="dash-velocity">
+                    <span class="dash-velocity-number">${stats.velocity}</span>
+                    <span>tareas/semana</span>
+                </div>
+                <div class="dash-velocity-detail">
+                    ${stats.created} creadas · ${stats.completed} completadas (${stats.period_days} días)
+                </div>
+            </div>
+            <div class="dash-panel">
+                <h3>📅 Prioridades</h3>
+                <div class="dash-priorities">
+                    <div class="dash-priority-row"><span class="priority-dot p1"></span> Urgente <strong>${t.by_priority.urgent}</strong></div>
+                    <div class="dash-priority-row"><span class="priority-dot p2"></span> Alta <strong>${t.by_priority.high}</strong></div>
+                    <div class="dash-priority-row"><span class="priority-dot p3"></span> Media <strong>${t.by_priority.medium}</strong></div>
+                    <div class="dash-priority-row"><span class="priority-dot p4"></span> Baja <strong>${t.by_priority.low}</strong></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Fila 3: Actividad por día -->
+        <div class="dash-panel dash-panel-full">
+            <h3>📈 Actividad semanal</h3>
+            <div class="dash-chart">
+                ${stats.day_activity.map(d => `
+                    <div class="dash-bar-col">
+                        <div class="dash-bar" style="height: ${Math.max(d.count * 20, 4)}px"></div>
+                        <span class="dash-bar-label">${d.day}</span>
+                        <span class="dash-bar-value">${d.count}</span>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+
+        <!-- Integraciones -->
+        <div class="dash-panel dash-panel-full">
+            <h3>🔗 Integraciones</h3>
+            <div class="dash-integrations">
+                <div class="dash-integration">
+                    <span>🤖</span>
+                    <div>Sesiones IA: <strong>${overview.ai.total_sessions}</strong></div>
+                </div>
+                <div class="dash-integration">
+                    <span>📅</span>
+                    <div>Eventos hoy: <strong>${overview.events.today}</strong></div>
+                </div>
+                <div class="dash-integration">
+                    <span>💰</span>
+                    <div>Alertas activas: <strong>${overview.financial.active_alerts}</strong> ${overview.financial.urgent > 0 ? `(⚠️ ${overview.financial.urgent} urgentes)` : ''}</div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// =============================================================================
+// GIT MONITOR — Estado de repositorios
+// =============================================================================
+
+async function loadGitStatus() {
+    const container = document.getElementById('git-container');
+    container.innerHTML = '<div class="loading-state"><div class="typing-dots"><span></span><span></span><span></span></div><p>Escaneando repositorio…</p></div>';
+
+    try {
+        const repo = await apiFetch('/integrations/git/scan-current');
+        renderGitStatus(repo);
+    } catch (err) {
+        container.innerHTML = `<div class="empty-state"><p>⚠️ Error: ${err.message}</p></div>`;
+    }
+}
+
+function renderGitStatus(repo) {
+    const container = document.getElementById('git-container');
+    const statusClass = repo.status.clean ? 'git-clean' : 'git-dirty';
+    const statusText = repo.status.clean ? '✅ Limpio' : '⚠️ Cambios sin commitear';
+
+    container.innerHTML = `
+        <div class="git-repo-card">
+            <div class="git-repo-header">
+                <div class="git-repo-name">
+                    <span>📁</span>
+                    <h3>${repo.name}</h3>
+                    <span class="git-branch-badge">🔀 ${repo.active_branch}</span>
+                </div>
+                <span class="git-status-badge ${statusClass}">${statusText}</span>
+            </div>
+
+            ${!repo.status.clean ? `
+            <div class="git-changes-section">
+                <h4>📝 Cambios pendientes</h4>
+                <div class="git-file-list">
+                    ${repo.status.modified.map(f => `<div class="git-file modified">M ${f}</div>`).join('')}
+                    ${repo.status.untracked.map(f => `<div class="git-file untracked">+ ${f}</div>`).join('')}
+                    ${repo.status.staged.map(f => `<div class="git-file staged">S ${f}</div>`).join('')}
+                </div>
+            </div>
+            ` : ''}
+
+            <div class="git-commits-section">
+                <h4>📜 Commits recientes</h4>
+                <div class="git-commits-list">
+                    ${repo.recent_commits.map(c => `
+                        <div class="git-commit">
+                            <code class="git-hash">${c.hash}</code>
+                            <span class="git-commit-msg">${c.message}</span>
+                            <span class="git-commit-date">${new Date(c.date).toLocaleDateString('es-PE')}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+
+            <div class="git-meta">
+                <span>📊 ${repo.weekly_commits} commits esta semana</span>
+                <span>🌳 ${repo.branches.length} rama(s)</span>
+                ${repo.remotes.map(r => `<span>🔗 ${r.name}: ${r.url}</span>`).join('')}
+            </div>
+        </div>
+    `;
+}
+
 function setupKeyboardShortcuts() {
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {

@@ -78,6 +78,26 @@
                 </ul>
             </div>
 
+            <!-- Dashboard y Git -->
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">Analítica</div>
+                <ul class="sidebar-nav">
+                    <li>
+                        <button class="sidebar-item" data-view="dashboard"
+                            onclick="switchView('dashboard', '📊 Dashboard')">
+                            <span class="icon">📊</span>
+                            Dashboard
+                        </button>
+                    </li>
+                    <li>
+                        <button class="sidebar-item" data-view="git" onclick="switchView('git', '🔀 Repositorios Git')">
+                            <span class="icon">🔀</span>
+                            Repositorios Git
+                        </button>
+                    </li>
+                </ul>
+            </div>
+
             <!-- Listas del usuario -->
             <div class="sidebar-section">
                 <div class="sidebar-section-title">Mis Listas</div>
@@ -145,6 +165,16 @@
 
             <!-- Financial Alerts Container (hidden by default) -->
             <div class="task-container" id="financial-container" style="display:none;">
+                <!-- Se llena dinámicamente -->
+            </div>
+
+            <!-- Dashboard Container (hidden by default) -->
+            <div class="task-container" id="dashboard-container" style="display:none;">
+                <!-- Se llena dinámicamente -->
+            </div>
+
+            <!-- Git Container (hidden by default) -->
+            <div class="task-container" id="git-container" style="display:none;">
                 <!-- Se llena dinámicamente -->
             </div>
         </main>
